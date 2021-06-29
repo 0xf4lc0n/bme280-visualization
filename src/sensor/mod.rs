@@ -66,7 +66,7 @@ impl Sensor {
 			match reader.read_line(&mut data) {
 				Ok(_) => sender.send(data)?,
 				Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
-				Err(e) => eprintln!("{:?}", e),
+				Err(e) => return Err(Error::from(e)),
 			}
 		});
 

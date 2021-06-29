@@ -5,6 +5,8 @@ mod backend;
 
 use super::sensor::data::Data;
 use backend::draw_piston_window;
+use piston_window::Event;
+use piston_window::Loop;
 use piston_window::{EventLoop, WindowSettings};
 use plotters::prelude::*;
 use std::collections::VecDeque;
@@ -24,11 +26,11 @@ fn draw_content(
 	let root = b.into_drawing_area();
 	root.fill(&WHITE)?;
 
-	if let Ok(v) = parsed_data.recv_timeout(Duration::from_nanos(1)) {
-		data[0].push_back(v.temperature);
-		data[1].push_back(v.humidity);
-		data[2].push_back(v.pressure);
-	}
+	let v = parsed_data.recv_timeout(Duration::from_secs(1))?;
+
+	data[0].push_back(v.temperature);
+	data[1].push_back(v.humidity);
+	data[2].push_back(v.pressure);
 
 	let mut cc = ChartBuilder::on(&root)
 		.margin(10)
@@ -81,14 +83,25 @@ pub fn display_graph(parsed_data: Receiver<Data>) -> () {
 	window.set_max_fps(FPS as u64);
 
 	let mut data = [
-		VecDeque::with_capacity(10),
-		VecDeque::with_capacity(10),
-		VecDeque::with_capacity(10),
+		VecDeque::with_capacity(64),
+		VecDeque::with_capacity(64),
+		VecDeque::with_capacity(64),
 	];
 
 	let mut time_shift = 0;
 
-	while let Some(_) = draw_piston_window(&mut window, |b| {
+	let mut event = draw_piston_window(&mut window, |b| {
 		draw_content(b, &mut data, &parsed_data, &mut time_shift)
-	}) {}
+	});
+
+	while let Some(e) = event {
+		match e {
+			Event::Loop(Loop::Idle(_)) => event = None,
+			_ => {
+				event = draw_piston_window(&mut window, |b| {
+					draw_content(b, &mut data, &parsed_data, &mut time_shift)
+				})
+			}
+		}
+	}
 }

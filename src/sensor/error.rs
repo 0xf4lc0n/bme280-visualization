@@ -19,3 +19,11 @@ impl<T> From<SendError<T>> for Error {
 		}
 	}
 }
+
+impl From<std::io::Error> for Error {
+	fn from(err: std::io::Error) -> Self {
+		Error {
+			description: err.to_string(),
+		}
+	}
+}
